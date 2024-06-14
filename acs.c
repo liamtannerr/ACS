@@ -27,7 +27,7 @@ int main(){
 	
 	FILE* customers_file = fopen("customers.txt", "r");
 	if (customers_file == NULL){
-		printf(RED "Error: Could not open customers file" RESET);
+		printf(RED "Error: Could not open customers file \n" RESET);
 		return 0;
 	}
 
@@ -38,15 +38,19 @@ int main(){
 	int customer_arrival_time;
 	int customer_service_time;
 
+	customer* customers = malloc(num_customers * sizeof(customer));
+
 	
-	/*
+	
 	while (!feof(customers_file)) {
+
+
     
-		scanf("");
+		scanf(line, "", &customer_id, &customer_class, &customer_arrival_time, &customer_service_time);
  	
 	        
 	}
-	*/
+	
  
 	fclose(customers_file);
  
