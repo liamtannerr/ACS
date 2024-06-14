@@ -12,27 +12,41 @@ float avg_wait = 0.0;
 float avg_ec_wait = 0.0;
 float avg_bs_wait = 0.0;
 
+typedef struct customer{
+
+	int id;
+	int class;
+	int arrival_time;
+	int service_time;
+
+}customer;
 
 int main(){
 	
+	char buf [256];
 	
 	FILE* customers_file = fopen("customers.txt", "r");
 	if (customers_file == NULL){
 		printf(RED "Error: Could not open customers file" RESET);
 		return 0;
 	}
-	char num_customers [1];
-	fgets(num_customers ,2,(customers_file));
-	
-	int num_ec_customers = 0;
-	int num_bs_customers = 0;
-	
 
+	int num_customers = atoi(fgets(buf ,2,(customers_file)));
+
+	int customer_id;
+	int customer_class;
+	int customer_arrival_time;
+	int customer_service_time;
+
+	
+	/*
 	while (!feof(customers_file)) {
-        	
- 
-        
+    
+		scanf("");
+ 	
+	        
 	}
+	*/
  
 	fclose(customers_file);
  
