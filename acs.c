@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
+#include "queue.h"
 
 #define BLUE "\x1b[34m"
 #define RESET "\x1b[0m"
@@ -12,14 +13,12 @@ float avg_wait = 0.0;
 float avg_ec_wait = 0.0;
 float avg_bs_wait = 0.0;
 
-typedef struct customer{
 
-	int id;
-	int class;
-	int arrival_time;
-	int service_time;
-
-}customer;
+int compare_arrivals(const void* a, const void* b){
+	customer* customer_a = (customer*)a;
+	customer* customer_b = (customer*)b;
+	return (customer_a->arrival_time - customer_b->arrival_time);
+}
 
 int main(){
 	
@@ -63,9 +62,26 @@ int main(){
 		}
 	}
 
- 
+	qsort(business_customers, num_business, sizeof(customer), compare_arrivals);
+	qsort(economy_customers, num_economy, sizeof(customer), compare_arrivals);
+
+	    printf(BLUE "Business Customers:\n" RESET);
+    for (int i = 0; i < num_business; i++) {
+        printf("Customer ID: %d, Class: %d, Arrival Time: %d, Service Time: %d\n",
+            business_customers[i].id, business_customers[i].class, business_customers[i].arrival_time, business_customers[i].service_time);
+    }
+
+    printf(GREEN "Economy Customers:\n" RESET);
+    for (int i = 0; i < num_economy; i++) {
+        printf("Customer ID: %d, Class: %d, Arrival Time: %d, Service Time: %d\n",
+            economy_customers[i].id, economy_customers[i].class, economy_customers[i].arrival_time, economy_customers[i].service_time);
+    }
+
 	fclose(customers_file);
 	free(business_customers);
 	free(economy_customers);
     return 0;
 }
+
+
+
