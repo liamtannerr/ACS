@@ -23,21 +23,24 @@ int compare_arrivals(const void* a, const void* b){
 	return (customer_a->arrival_time - customer_b->arrival_time);
 }
 
-void handleArrivals(void* arg){
+void* handleArrivals(void* arg){
 	customer* customers = (customer*) arg;
 	int cur_arrival;
 	int prev_arrival = 0;
 	int dif;
 	for (int i = 0; i < num_customers; i++){
-		customer cust = customers [i];
+		customer cust = customers[i];
 		cur_arrival = cust.arrival_time;
+		
 		if(cust.class == 1){
 			pthread_mutex_lock(&business_mutex);
 			enqueue(business_queue, cust);
+			
 			pthread_mutex_unlock(&business_mutex);
 		} else {
 			pthread_mutex_lock(&economy_mutex);
 			enqueue(economy_queue, cust);
+			
 			pthread_mutex_unlock(&economy_mutex);
 		}
 		dif = cur_arrival - prev_arrival;
@@ -45,11 +48,11 @@ void handleArrivals(void* arg){
 		prev_arrival = cur_arrival;
 
 	}
+	return NULL;
 }
 
 void* serveCustomer(void* arg) {
 	int clerk_id = *(int*)arg;
-	struct timespec start_time, end_time;
 	while(1){
 		customer* cust = NULL;
 		pthread_mutex_lock(&business_mutex);
@@ -88,8 +91,7 @@ int main(){
 		return 0;
 	}
 
-	pthread_t clerks [5];
-	int clerkIds [5];
+
 
 	num_customers = atoi(fgets(buf, sizeof(buf), (customers_file)));
 	int customer_id;
@@ -105,12 +107,10 @@ int main(){
 	for(int i = 0; i < num_customers; i++){
 		if(fgets(line, sizeof(line), customers_file) != NULL){
 			sscanf(line, "%d:%d,%d,%d", &customer_id, &customer_class, &customer_arrival_time, &customer_service_time);
-			if(customer_class == 1){
-				customers[num_business].id = customer_id;
-				customers[num_business].class = customer_class;
-				customers[num_business].arrival_time = customer_arrival_time;
-				customers[num_business].service_time = customer_service_time;				
-			}
+			customers[i].id = customer_id;
+			customers[i].class = customer_class;
+			customers[i].arrival_time = customer_arrival_time;
+			customers[i].service_time = customer_service_time;				
 			if(customer_class == 1){
 				num_business++;				
 			} else {
@@ -123,28 +123,33 @@ int main(){
 	fclose(customers_file);
 	qsort(customers, num_business, sizeof(customer), compare_arrivals);
 
+
 	business_queue = createQueue();
 	economy_queue = createQueue();
 
+	pthread_mutex_init(&business_mutex, NULL);
+	pthread_mutex_init(&economy_mutex, NULL);
+
 	pthread_t queueHandler;
-	pthread_create(&queueHandler, NULL, handleArrivals, &customers);
+	pthread_create(&queueHandler, NULL, handleArrivals, customers);
 
-
-	pthread_mutex_init(&business_mutex, NULL);
-	pthread_mutex_init(&business_mutex, NULL);
+	/* 
+	pthread_t clerks [5];
+	int clerkIds [5];
 
 	for(int i = 0; i < 5; i++){
 		clerkIds[i] = i + 1;
 		pthread_create(&clerks[i], NULL, serveCustomer, &clerkIds[i]);
 	}
 
-	pthread_join(queueHandler, NULL);
-
 	for(int i = 0; i < 5; i++){
 		pthread_join(clerks[i], NULL);
-	}
+	}	
+
+	*/
 
 
+	pthread_join(queueHandler, NULL);
 	
 	free(customers);
     return 0;
