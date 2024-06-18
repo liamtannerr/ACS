@@ -9,19 +9,42 @@
 #define RED  "\x1b[31m"
 #define GREEN "\x1b[32m"
 
-float avg_wait = 0.0;
-float avg_ec_wait = 0.0;
-float avg_bs_wait = 0.0;
+
 Queue* business_queue;
 Queue* economy_queue;
 pthread_mutex_t business_mutex;
 pthread_mutex_t economy_mutex;
+int num_customers;
 
 
 int compare_arrivals(const void* a, const void* b){
 	customer* customer_a = (customer*)a;
 	customer* customer_b = (customer*)b;
 	return (customer_a->arrival_time - customer_b->arrival_time);
+}
+
+void handleArrivals(void* arg){
+	customer* customers = (customer*) arg;
+	int cur_arrival;
+	int prev_arrival = 0;
+	int dif;
+	for (int i = 0; i < num_customers; i++){
+		customer cust = customers [i];
+		cur_arrival = cust.arrival_time;
+		if(cust.class == 1){
+			pthread_mutex_lock(&business_mutex);
+			enqueue(business_queue, cust);
+			pthread_mutex_unlock(&business_mutex);
+		} else {
+			pthread_mutex_lock(&economy_mutex);
+			enqueue(economy_queue, cust);
+			pthread_mutex_unlock(&economy_mutex);
+		}
+		dif = cur_arrival - prev_arrival;
+		usleep(100000*dif);
+		prev_arrival = cur_arrival;
+
+	}
 }
 
 void* serveCustomer(void* arg) {
@@ -53,6 +76,8 @@ void* serveCustomer(void* arg) {
 
 
 
+
+
 int main(){
 	
 	char buf [256];
@@ -66,14 +91,13 @@ int main(){
 	pthread_t clerks [5];
 	int clerkIds [5];
 
-	int num_customers = atoi(fgets(buf, sizeof(buf), (customers_file)));
+	num_customers = atoi(fgets(buf, sizeof(buf), (customers_file)));
 	int customer_id;
 	int customer_class;
 	int customer_arrival_time;
 	int customer_service_time;
 
-	customer* business_customers = malloc(num_customers * sizeof(customer));
-	customer* economy_customers = malloc(num_customers * sizeof(customer));
+	customer* customers = malloc(num_customers * sizeof(customer));
 	char line [256];
 	int num_business = 0;
 	int num_economy = 0;
@@ -82,27 +106,29 @@ int main(){
 		if(fgets(line, sizeof(line), customers_file) != NULL){
 			sscanf(line, "%d:%d,%d,%d", &customer_id, &customer_class, &customer_arrival_time, &customer_service_time);
 			if(customer_class == 1){
-				business_customers[num_business].id = customer_id;
-				business_customers[num_business].class = customer_class;
-				business_customers[num_business].arrival_time = customer_arrival_time;
-				business_customers[num_business].service_time = customer_service_time;
+				customers[num_business].id = customer_id;
+				customers[num_business].class = customer_class;
+				customers[num_business].arrival_time = customer_arrival_time;
+				customers[num_business].service_time = customer_service_time;				
+			}
+			if(customer_class == 1){
 				num_business++;				
 			} else {
-				economy_customers[num_economy].id = customer_id;
-				economy_customers[num_economy].class = customer_class;
-				economy_customers[num_economy].arrival_time = customer_arrival_time;
-				economy_customers[num_economy].service_time = customer_service_time;
 				num_economy++;
-			}
+			}			
 
 		}
 	}
 
-	qsort(business_customers, num_business, sizeof(customer), compare_arrivals);
-	qsort(economy_customers, num_economy, sizeof(customer), compare_arrivals);
+	fclose(customers_file);
+	qsort(customers, num_business, sizeof(customer), compare_arrivals);
 
 	business_queue = createQueue();
 	economy_queue = createQueue();
+
+	pthread_t queueHandler;
+	pthread_create(&queueHandler, NULL, handleArrivals, &customers);
+
 
 	pthread_mutex_init(&business_mutex, NULL);
 	pthread_mutex_init(&business_mutex, NULL);
@@ -112,11 +138,15 @@ int main(){
 		pthread_create(&clerks[i], NULL, serveCustomer, &clerkIds[i]);
 	}
 
-	
+	pthread_join(queueHandler, NULL);
 
-	fclose(customers_file);
-	free(business_customers);
-	free(economy_customers);
+	for(int i = 0; i < 5; i++){
+		pthread_join(clerks[i], NULL);
+	}
+
+
+	
+	free(customers);
     return 0;
 }
 
