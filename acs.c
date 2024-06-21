@@ -34,7 +34,7 @@ double get_relative_time(){
 }
 
 void* handleArrivals(void* arg){
-customer* customers = (customer*)arg;
+    customer* customers = (customer*)arg;
     int cur_arrival = customers[0].arrival_time;
     int next_arrival;
     int dif;
@@ -60,12 +60,12 @@ customer* customers = (customer*)arg;
             pthread_mutex_unlock(&economy_mutex);
         }
 
-		if(i + 1 < num_customers){
-			cur_arrival = cust.arrival_time;
-			next_arrival = customers[i+1].arrival_time;
-			dif = next_arrival - cur_arrival;
-        	usleep(100000 * dif);
-		}
+        if (i + 1 < num_customers) {
+            cur_arrival = cust.arrival_time;
+            next_arrival = customers[i + 1].arrival_time;
+            dif = next_arrival - cur_arrival;
+            usleep(100000 * dif);
+        }
     }
 
     return NULL;
@@ -74,17 +74,15 @@ customer* customers = (customer*)arg;
 void* serveCustomer(void* arg) {
     int clerk_id = *(int*)arg;
     double relative_time;
-    while (num_customers_processed < num_customers) {
+    while (1) {
         customer* cust = NULL;
 
-        
         pthread_mutex_lock(&business_mutex);
         if (!isEmpty(business_queue)) {
             cust = dequeue(business_queue);
         }
         pthread_mutex_unlock(&business_mutex);
 
-        
         if (cust == NULL) {
             pthread_mutex_lock(&economy_mutex);
             if (!isEmpty(economy_queue)) {
@@ -93,7 +91,6 @@ void* serveCustomer(void* arg) {
             pthread_mutex_unlock(&economy_mutex);
         }
 
-        
         if (cust != NULL) {
             relative_time = get_relative_time();
             if (cust->class == 1) {
@@ -104,7 +101,6 @@ void* serveCustomer(void* arg) {
                        clerk_id, cust->id, relative_time);
             }
 
-            
             usleep(cust->service_time * 100000);
 
             relative_time = get_relative_time();
@@ -120,92 +116,86 @@ void* serveCustomer(void* arg) {
             num_customers_processed++;
             pthread_mutex_unlock(&processed_mutex);
 
-            free(cust);
+            free(cust); 
         }
+
+        pthread_mutex_lock(&processed_mutex);
+        if (num_customers_processed >= num_customers) {
+            pthread_mutex_unlock(&processed_mutex);
+            break;
+        }
+        pthread_mutex_unlock(&processed_mutex);
     }
     return NULL;
 }
 
-
-
-
-
-
 int main(){
-	
-	char buf [256];
-	
-	FILE* customers_file = fopen("customers.txt", "r");
-	if (customers_file == NULL){
-		printf(RED "Error: Could not open customers file \n" RESET);
-		return 0;
-	}
+    char buf [256];
 
-	num_customers = atoi(fgets(buf, sizeof(buf), (customers_file)));
-	if (num_customers == 0){
-		printf(RED"There are no customers to serve\n"RESET);
-	}
+    FILE* customers_file = fopen("customers.txt", "r");
+    if (customers_file == NULL){
+        printf(RED "Error: Could not open customers file \n" RESET);
+        return 0;
+    }
 
-	int customer_id;
-	int customer_class;
-	int customer_arrival_time;
-	int customer_service_time;
+    num_customers = atoi(fgets(buf, sizeof(buf), customers_file));
+    if (num_customers == 0){
+        printf(RED "There are no customers to serve\n" RESET);
+    }
 
-	customer* customers = malloc(num_customers * sizeof(customer));
-	char line [256];
-	int num_business = 0;
-	int num_economy = 0;
-	
-	for(int i = 0; i < num_customers; i++){
-		if(fgets(line, sizeof(line), customers_file) != NULL){
-			sscanf(line, "%d:%d,%d,%d", &customer_id, &customer_class, &customer_arrival_time, &customer_service_time);
-			customers[i].id = customer_id;
-			customers[i].class = customer_class;
-			customers[i].arrival_time = customer_arrival_time;
-			customers[i].service_time = customer_service_time;				
-			if(customer_class == 1){
-				num_business++;				
-			} else {
-				num_economy++;
-			}			
+    int customer_id;
+    int customer_class;
+    int customer_arrival_time;
+    int customer_service_time;
 
-		}
-	}
+    customer* customers = malloc(num_customers * sizeof(customer));
+    char line [256];
+    int num_business = 0;
+    int num_economy = 0;
 
-	fclose(customers_file);
-	qsort(customers, num_customers, sizeof(customer), compare_arrivals);
+    for(int i = 0; i < num_customers; i++){
+        if(fgets(line, sizeof(line), customers_file) != NULL){
+            sscanf(line, "%d:%d,%d,%d", &customer_id, &customer_class, &customer_arrival_time, &customer_service_time);
+            customers[i].id = customer_id;
+            customers[i].class = customer_class;
+            customers[i].arrival_time = customer_arrival_time;
+            customers[i].service_time = customer_service_time;                
+            if(customer_class == 1){
+                num_business++;                
+            } else {
+                num_economy++;
+            }            
 
-	business_queue = createQueue();
-	economy_queue = createQueue();
+        }
+    }
 
-	pthread_mutex_init(&business_mutex, NULL);
-	pthread_mutex_init(&economy_mutex, NULL);
-	pthread_mutex_init(&processed_mutex, NULL);
+    fclose(customers_file);
+    qsort(customers, num_customers, sizeof(customer), compare_arrivals);
 
-	gettimeofday(&start_time, NULL);
-	usleep(100000 * customers[0].arrival_time);
-	pthread_t queueHandler;
-	pthread_create(&queueHandler, NULL, handleArrivals, customers);
-	
-	pthread_t clerks [5];
-	int clerkIds [5];
-	for(int i = 0; i < 5; i++){
-		clerkIds[i] = i + 1;
-		pthread_create(&clerks[i], NULL, serveCustomer, &clerkIds[i]);
-	}
+    business_queue = createQueue();
+    economy_queue = createQueue();
 
-	pthread_join(queueHandler, NULL);
-	for(int i = 0; i < 5; i++){
-		pthread_join(clerks[i], NULL);
-	}	
+    pthread_mutex_init(&business_mutex, NULL);
+    pthread_mutex_init(&economy_mutex, NULL);
+    pthread_mutex_init(&processed_mutex, NULL);
 
-	
-	
-	free(customers);
+    gettimeofday(&start_time, NULL);
+    usleep(100000 * customers[0].arrival_time);
+    pthread_t queueHandler;
+    pthread_create(&queueHandler, NULL, handleArrivals, customers);
+
+    pthread_t clerks [5];
+    int clerkIds [5];
+    for(int i = 0; i < 5; i++){
+        clerkIds[i] = i + 1;
+        pthread_create(&clerks[i], NULL, serveCustomer, &clerkIds[i]);
+    }
+
+    pthread_join(queueHandler, NULL);
+    for(int i = 0; i < 5; i++){
+        pthread_join(clerks[i], NULL);
+    }    
+
+    free(customers);
     return 0;
 }
-
-
-
-
-
