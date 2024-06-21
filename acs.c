@@ -17,7 +17,10 @@ pthread_mutex_t business_mutex;
 pthread_mutex_t economy_mutex;
 pthread_mutex_t processed_mutex;
 int num_customers;
+double first_cust_time;
 int num_customers_processed = 0;
+double total_business_wait = 0;
+double total_economy_wait = 0;
 struct timeval start_time;
 
 
@@ -36,6 +39,7 @@ double get_relative_time(){
 void* handleArrivals(void* arg){
     customer* customers = (customer*)arg;
     int cur_arrival = customers[0].arrival_time;
+    first_cust_time = customers[0].arrival_time * 0.1;
     int next_arrival;
     int dif;
     struct timespec ts;
@@ -51,12 +55,14 @@ void* handleArrivals(void* arg){
             enqueue(business_queue, cust);
             relative_time = get_relative_time(); // Get time after adding to queue
             printf("Customer %d enters the business queue. The length of the business queue is now: %d at %.1f seconds\n", cust.id, business_queue->size, relative_time);
+            cust.rel_arrival_time = relative_time;
             pthread_mutex_unlock(&business_mutex);
         } else {
             pthread_mutex_lock(&economy_mutex);
             enqueue(economy_queue, cust);
             relative_time = get_relative_time(); // Get time after adding to queue
             printf("Customer %d enters the economy queue. The length of the economy queue is now: %d at %.1f seconds\n", cust.id, economy_queue->size, relative_time);
+            cust.rel_arrival_time = relative_time;
             pthread_mutex_unlock(&economy_mutex);
         }
 
@@ -96,9 +102,12 @@ void* serveCustomer(void* arg) {
             if (cust->class == 1) {
                 printf("Clerk %d STARTS serving customer %d from the business queue at %.1f seconds.\n",
                        clerk_id, cust->id, relative_time);
+                       printf("Dequeued at: %f queued at: %f\n", relative_time, cust->rel_arrival_time);
+                       total_business_wait += relative_time - cust->rel_arrival_time - first_cust_time;
             } else {
                 printf("Clerk %d STARTS serving customer %d from the economy queue at %.1f seconds.\n",
                        clerk_id, cust->id, relative_time);
+                       total_economy_wait += relative_time - cust->rel_arrival_time - first_cust_time;
             }
 
             usleep(cust->service_time * 100000);
@@ -141,6 +150,7 @@ int main(){
     num_customers = atoi(fgets(buf, sizeof(buf), customers_file));
     if (num_customers == 0){
         printf(RED "There are no customers to serve\n" RESET);
+        return 0;
     }
 
     int customer_id;
@@ -194,7 +204,22 @@ int main(){
     pthread_join(queueHandler, NULL);
     for(int i = 0; i < 5; i++){
         pthread_join(clerks[i], NULL);
-    }    
+    }  
+
+    double total_wait = total_business_wait + total_economy_wait;
+    
+    if(!num_business == 0){
+        printf("The average wait for business customers was %.1f seconds\n", total_business_wait/num_business);
+    } else {
+        printf("There were no business class customers\n");
+    }
+    if(!num_economy == 0){
+        printf("The average wait for economy customers was %.1f seconds\n", total_economy_wait/num_economy);
+    } else {
+        printf("There were no economy class customers\n");
+    }
+    printf("The average wait amongst all customers was %.1f seconds\n", total_wait/num_customers);
+
 
     free(customers);
     return 0;

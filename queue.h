@@ -5,11 +5,11 @@
 
 // Define the structure for the linked list node
 typedef struct customer{
-
 	int id;
 	int class;
 	int arrival_time;
 	int service_time;
+	double rel_arrival_time;
 }customer;
 
 typedef struct Node{
