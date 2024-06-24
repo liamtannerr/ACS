@@ -102,7 +102,6 @@ void* serveCustomer(void* arg) {
             if (cust->class == 1) {
                 printf("Clerk %d STARTS serving customer %d from the business queue at %.1f seconds.\n",
                        clerk_id, cust->id, relative_time);
-                       printf("Dequeued at: %f queued at: %f\n", relative_time, cust->rel_arrival_time);
                        total_business_wait += relative_time - cust->rel_arrival_time - first_cust_time;
             } else {
                 printf("Clerk %d STARTS serving customer %d from the economy queue at %.1f seconds.\n",
