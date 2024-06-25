@@ -17,7 +17,6 @@ pthread_mutex_t business_mutex;
 pthread_mutex_t economy_mutex;
 pthread_mutex_t processed_mutex;
 int num_customers;
-double first_cust_time;
 int num_customers_processed = 0;
 double total_business_wait = 0;
 double total_economy_wait = 0;
@@ -39,7 +38,6 @@ double get_relative_time(){
 void* handleArrivals(void* arg){
     customer* customers = (customer*)arg;
     int cur_arrival = customers[0].arrival_time;
-    first_cust_time = customers[0].arrival_time * 0.1;
     int next_arrival;
     int dif;
     struct timespec ts;
@@ -48,21 +46,19 @@ void* handleArrivals(void* arg){
         customer cust = customers[i];
         // Print customer arrival time
         double relative_time = get_relative_time();
-        printf("Customer%2d arrives at %.1f seconds\n", cust.id, relative_time);
+        printf("Customer %d arrives at %.1f seconds\n", cust.id, relative_time);
 
         if (cust.class == 1) {
             pthread_mutex_lock(&business_mutex);
             enqueue(business_queue, cust);
             relative_time = get_relative_time(); // Get time after adding to queue
             printf("Customer %d enters the business queue. The length of the business queue is now: %d at %.1f seconds\n", cust.id, business_queue->size, relative_time);
-            cust.rel_arrival_time = relative_time;
             pthread_mutex_unlock(&business_mutex);
         } else {
             pthread_mutex_lock(&economy_mutex);
             enqueue(economy_queue, cust);
             relative_time = get_relative_time(); // Get time after adding to queue
             printf("Customer %d enters the economy queue. The length of the economy queue is now: %d at %.1f seconds\n", cust.id, economy_queue->size, relative_time);
-            cust.rel_arrival_time = relative_time;
             pthread_mutex_unlock(&economy_mutex);
         }
 
@@ -80,7 +76,7 @@ void* handleArrivals(void* arg){
 void* serveCustomer(void* arg) {
     int clerk_id = *(int*)arg;
     double relative_time;
-    while (1) {
+    while (num_customers_processed < num_customers) {
         customer* cust = NULL;
 
         pthread_mutex_lock(&business_mutex);
@@ -102,11 +98,17 @@ void* serveCustomer(void* arg) {
             if (cust->class == 1) {
                 printf("Clerk %d STARTS serving customer %d from the business queue at %.1f seconds.\n",
                        clerk_id, cust->id, relative_time);
-                       total_business_wait += relative_time - cust->rel_arrival_time - first_cust_time;
+                      // printf("Relative time: %f\n", relative_time);
+                      // printf("Customer relative arrival time: %f\n", cust->rel_arrival_time);
+                      // printf("Adding %f seconds to total business wait\n", relative_time - cust->rel_arrival_time);
+                       total_business_wait += relative_time - (cust->arrival_time * 0.1);
             } else {
                 printf("Clerk %d STARTS serving customer %d from the economy queue at %.1f seconds.\n",
                        clerk_id, cust->id, relative_time);
-                       total_economy_wait += relative_time - cust->rel_arrival_time - first_cust_time;
+                       //printf("Relative time: %f\n", relative_time);
+                       //printf("Customer relative arrival time: %f\n", cust->rel_arrival_time);
+                      // printf("Adding %f seconds to total economy wait\n", relative_time - cust->rel_arrival_time);
+                       total_economy_wait += relative_time - (cust->arrival_time * 0.1);
             }
 
             usleep(cust->service_time * 100000);
@@ -127,12 +129,6 @@ void* serveCustomer(void* arg) {
             free(cust); 
         }
 
-        pthread_mutex_lock(&processed_mutex);
-        if (num_customers_processed >= num_customers) {
-            pthread_mutex_unlock(&processed_mutex);
-            break;
-        }
-        pthread_mutex_unlock(&processed_mutex);
     }
     return NULL;
 }
@@ -168,7 +164,7 @@ int main(){
             customers[i].id = customer_id;
             customers[i].class = customer_class;
             customers[i].arrival_time = customer_arrival_time;
-            customers[i].service_time = customer_service_time;                
+            customers[i].service_time = customer_service_time;               
             if(customer_class == 1){
                 num_business++;                
             } else {
