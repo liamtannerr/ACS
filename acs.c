@@ -46,19 +46,19 @@ void* handleArrivals(void* arg){
         customer cust = customers[i];
         // Print customer arrival time
         double relative_time = get_relative_time();
-        printf("Customer %d arrives at %.1f seconds\n", cust.id, relative_time);
+        printf("Customer %d arrives at %.2f seconds\n", cust.id, relative_time);
 
         if (cust.class == 1) {
             pthread_mutex_lock(&business_mutex);
             enqueue(business_queue, cust);
             relative_time = get_relative_time(); // Get time after adding to queue
-            printf("Customer %d enters the business queue. The length of the business queue is now: %d at %.1f seconds\n", cust.id, business_queue->size, relative_time);
+            printf("Customer %d enters the business queue. The length of the business queue is now: %d at %.2f seconds\n", cust.id, business_queue->size, relative_time);
             pthread_mutex_unlock(&business_mutex);
         } else {
             pthread_mutex_lock(&economy_mutex);
             enqueue(economy_queue, cust);
             relative_time = get_relative_time(); // Get time after adding to queue
-            printf("Customer %d enters the economy queue. The length of the economy queue is now: %d at %.1f seconds\n", cust.id, economy_queue->size, relative_time);
+            printf("Customer %d enters the economy queue. The length of the economy queue is now: %d at %.2f seconds\n", cust.id, economy_queue->size, relative_time);
             pthread_mutex_unlock(&economy_mutex);
         }
 
@@ -96,18 +96,12 @@ void* serveCustomer(void* arg) {
         if (cust != NULL) {
             relative_time = get_relative_time();
             if (cust->class == 1) {
-                printf("Clerk %d STARTS serving customer %d from the business queue at %.1f seconds.\n",
+                printf("Clerk %d STARTS serving customer %d from the business queue at %.2f seconds.\n",
                        clerk_id, cust->id, relative_time);
-                      // printf("Relative time: %f\n", relative_time);
-                      // printf("Customer relative arrival time: %f\n", cust->rel_arrival_time);
-                      // printf("Adding %f seconds to total business wait\n", relative_time - cust->rel_arrival_time);
                        total_business_wait += relative_time - (cust->arrival_time * 0.1);
             } else {
-                printf("Clerk %d STARTS serving customer %d from the economy queue at %.1f seconds.\n",
+                printf("Clerk %d STARTS serving customer %d from the economy queue at %.2f seconds.\n",
                        clerk_id, cust->id, relative_time);
-                       //printf("Relative time: %f\n", relative_time);
-                       //printf("Customer relative arrival time: %f\n", cust->rel_arrival_time);
-                      // printf("Adding %f seconds to total economy wait\n", relative_time - cust->rel_arrival_time);
                        total_economy_wait += relative_time - (cust->arrival_time * 0.1);
             }
 
@@ -115,10 +109,10 @@ void* serveCustomer(void* arg) {
 
             relative_time = get_relative_time();
             if (cust->class == 1) {
-                printf("Clerk %d FINISHES serving customer %d from the business queue at %.1f seconds.\n",
+                printf("Clerk %d FINISHES serving customer %d from the business queue at %.2f seconds.\n",
                        clerk_id, cust->id, relative_time);
             } else {
-                printf("Clerk %d FINISHES serving customer %d from the economy queue at %.1f seconds.\n",
+                printf("Clerk %d FINISHES serving customer %d from the economy queue at %.2f seconds.\n",
                        clerk_id, cust->id, relative_time);
             }
 
@@ -204,16 +198,16 @@ int main(){
     double total_wait = total_business_wait + total_economy_wait;
     
     if(!num_business == 0){
-        printf("The average wait for business customers was %.1f seconds\n", total_business_wait/num_business);
+        printf("The average wait for business customers was %.2f seconds\n", total_business_wait/num_business);
     } else {
         printf("There were no business class customers\n");
     }
     if(!num_economy == 0){
-        printf("The average wait for economy customers was %.1f seconds\n", total_economy_wait/num_economy);
+        printf("The average wait for economy customers was %.2f seconds\n", total_economy_wait/num_economy);
     } else {
         printf("There were no economy class customers\n");
     }
-    printf("The average wait amongst all customers was %.1f seconds\n", total_wait/num_customers);
+    printf("The average wait amongst all customers was %.2f seconds\n", total_wait/num_customers);
 
 
     free(customers);
