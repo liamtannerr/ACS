@@ -1,1 +1,1 @@
-# ACS
+In order to build my ACS project simply use the Makefile by typing in the command "make". Now, to run ACS use the "./ACS" command. You can also run with "./ACS customers.txt" however, this is not necessary as "./ACS" already finds the input file if it's in the same directory.

@@ -3,20 +3,21 @@
 
 #include <sys/types.h>
 
-// Define the structure for the linked list node
+// Define the structure for the customer object
 typedef struct customer{
 	int id;
 	int class;
 	int arrival_time;
 	int service_time;
-	double rel_arrival_time;
 }customer;
 
+// Define the structure for the Node object
 typedef struct Node{
 	customer cust;
 	struct Node* next;
 }Node;
 
+// Define the structure for the Queue object
 typedef struct Queue{
 	Node* front;
 	Node* rear;
